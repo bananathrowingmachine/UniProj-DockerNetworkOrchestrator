@@ -1,0 +1,165 @@
+services:
+  ha:
+    build: 
+      dockerfile: Dockerfile.Host
+    command: >
+      bash -c "
+      ip route del default 2>/dev/null || true;
+      ip route add default via 10.0.14.4;
+      exec bash"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true    
+    networks:
+      net14:
+        ipv4_address: 10.0.14.3
+    depends_on:
+      r1:
+        condition: service_healthy
+
+  r1:
+    build: 
+      dockerfile: Dockerfile.Router
+    volumes:
+      - ./frrScripts/r1.conf:/etc/frr/frr.conf
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    networks:
+      net14:
+        ipv4_address: 10.0.14.4
+      net15:
+        ipv4_address: 10.0.15.4
+      net17:
+        ipv4_address: 10.0.17.4
+    depends_on:
+      r2:
+        condition: service_started
+      r4:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "ping -c 1 10.0.19.4 || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  r2:
+    build: 
+      dockerfile: Dockerfile.Router
+    volumes:
+      - ./frrScripts/r2.conf:/etc/frr/frr.conf
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    networks:
+      net15:
+        ipv4_address: 10.0.15.5
+      net16:
+        ipv4_address: 10.0.16.5
+
+  r4:
+    build: 
+      dockerfile: Dockerfile.Router
+    volumes:
+      - ./frrScripts/r4.conf:/etc/frr/frr.conf
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    networks:
+      net17:
+        ipv4_address: 10.0.17.5
+      net18:
+        ipv4_address: 10.0.18.5
+
+  r3:
+    build: 
+      dockerfile: Dockerfile.Router
+    volumes:
+      - ./frrScripts/r3.conf:/etc/frr/frr.conf
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    networks:
+      net16:
+        ipv4_address: 10.0.16.4
+      net18:
+        ipv4_address: 10.0.18.4
+      net19:
+        ipv4_address: 10.0.19.4
+    depends_on:
+      r2:
+        condition: service_started
+      r4:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "ping -c 1 10.0.14.4 || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  hb:
+    build: 
+      dockerfile: Dockerfile.Host
+    command: >
+      bash -c "
+      ip route del default 2>/dev/null || true;
+      ip route add default via 10.0.19.4;
+      exec bash"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_ADMIN
+    privileged: true    
+    networks:
+      net19:
+        ipv4_address: 10.0.19.3
+    depends_on:
+      r3:
+        condition: service_healthy
+
+networks:
+  net14:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.14.0/24
+  net15:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.15.0/24
+  net16:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.16.0/24
+  net17:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.17.0/24
+  net18:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.18.0/24
+  net19:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.19.0/24
+
+
+
+
+
